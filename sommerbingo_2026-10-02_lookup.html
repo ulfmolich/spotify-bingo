@@ -1,0 +1,1803 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sommerbingo — Live Caller</title>
+<meta name="description" content="Live music bingo host tool for Worklinq Sommerbingo. Tick songs as they play and track remaining cells per card in real time.">
+
+<style>
+:root {
+  --blue:   #352BA5;
+  --indigo: #5348CE;
+  --violet: #887DFD;
+  --slate:  #131C27;
+  --steel:  #8FA8B2;
+  --cloud:  #CEDAE0;
+  --ice:    #F5F7F8;
+  --white:  #FFFFFF;
+  --red:    #DC2626;
+  --amber:  #D97706;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--ice);
+  color: var(--slate);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.hdr {
+  background: var(--blue);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  height: 50px;
+  flex-shrink: 0;
+  border-bottom: 3px solid var(--indigo);
+}
+.hdr-brand {
+  font-size: 11px; font-weight: 800;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(255,255,255,.6);
+}
+.hdr-div { width: 1px; height: 18px; background: rgba(255,255,255,.2); }
+.hdr-title { font-size: 15px; font-weight: 600; flex: 1; }
+.hdr-stat { font-size: 12px; color: rgba(255,255,255,.7); }
+.hdr-stat strong {
+  font-size: 14px; font-weight: 700; color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.hdr-bingo-badge {
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 12px; font-weight: 700;
+  color: #fff;
+  display: none;
+}
+.hdr-bingo-badge.visible { display: block; }
+.btn-reset {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.25);
+  color: #fff; font-family: inherit;
+  font-size: 11.5px; font-weight: 600;
+  padding: 5px 11px; border-radius: 4px;
+  cursor: pointer; letter-spacing: .02em;
+  transition: background .15s;
+}
+.btn-reset:hover { background: rgba(255,255,255,.22); }
+
+/* ── App shell ── */
+.app { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Song panel ── */
+.songs {
+  width: 336px; flex-shrink: 0;
+  background: var(--white);
+  border-right: 1px solid var(--cloud);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.songs-top {
+  padding: 10px 12px 9px;
+  border-bottom: 1px solid var(--cloud);
+  flex-shrink: 0;
+}
+
+/* ── Search ── */
+.search-wrap {
+  position: relative;
+  margin-bottom: 5px;
+}
+.search-icon {
+  position: absolute; left: 8px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px; color: var(--steel);
+  pointer-events: none; line-height: 1;
+  user-select: none;
+}
+.search-input {
+  width: 100%;
+  padding: 7px 8px 7px 28px;
+  border: 1.5px solid var(--cloud);
+  border-radius: 5px;
+  font-family: inherit; font-size: 12.5px;
+  color: var(--slate); background: var(--ice);
+  outline: none;
+  transition: border-color .15s, background .15s;
+}
+.search-input:focus { border-color: var(--blue); background: #fff; }
+.search-input::placeholder { color: var(--steel); opacity: 1; }
+.search-hint {
+  font-size: 10.5px; color: var(--steel);
+  min-height: 15px; margin-bottom: 5px;
+  padding-left: 2px; line-height: 15px;
+}
+.hint-one  { color: var(--blue); font-weight: 600; }
+.hint-none { color: var(--red); }
+
+.btn-draw {
+  width: 100%; background: var(--blue); color: #fff;
+  border: none; font-family: inherit;
+  font-size: 13px; font-weight: 600;
+  padding: 8px; border-radius: 5px;
+  cursor: pointer; transition: background .15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-draw:hover { background: var(--indigo); }
+.btn-draw:disabled { background: var(--cloud); color: var(--steel); cursor: default; }
+
+.song-list { overflow-y: auto; flex: 1; padding: 5px 0; }
+
+.song-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 5px 12px;
+  cursor: pointer; user-select: none;
+  transition: background .1s;
+}
+.song-item:hover { background: var(--ice); }
+.song-item.called { opacity: .38; }
+.song-item.flash { background: color-mix(in srgb, var(--violet) 18%, transparent); }
+
+.chk {
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 2px solid var(--cloud); border-radius: 3px;
+  display: grid; place-items: center;
+  transition: all .12s;
+}
+.song-item.called .chk { background: var(--blue); border-color: var(--blue); }
+.chk-mark {
+  width: 7px; height: 4px;
+  border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translate(0, -1px);
+  display: none;
+}
+.song-item.called .chk-mark { display: block; }
+
+.song-info { flex: 1; min-width: 0; }
+.song-t {
+  font-size: 12px; font-weight: 600; color: var(--slate);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.song-item.called .song-t { text-decoration: line-through; }
+.song-a {
+  font-size: 10px; color: var(--steel);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.song-y {
+  font-size: 10px; color: var(--cloud); flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Card panel ── */
+.cards { flex: 1; overflow-y: auto; padding: 14px; }
+.cards-top {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px;
+}
+.cards-top h2 {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--steel);
+}
+.legend { display: flex; gap: 10px; margin-left: auto; }
+.leg { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--steel); }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 7px;
+}
+.chip {
+  border-radius: 8px; padding: 9px 6px;
+  text-align: center; cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform .12s, box-shadow .12s;
+}
+.chip:hover { transform: translateY(-2px); box-shadow: 0 5px 14px rgba(0,0,0,.11); }
+.chip.s-default { background: var(--white); border-color: var(--cloud); }
+.chip.s-close   { background: #FFF8EC; border-color: #F59E0B; }
+.chip.s-urgent  { background: #FEF2F2; border-color: var(--red); }
+.chip.s-bingo   { background: var(--blue); border-color: var(--indigo); color: #fff; }
+
+.chip-num {
+  font-size: 8.5px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; opacity: .55; margin-bottom: 3px;
+}
+.chip-count {
+  font-size: 24px; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums; color: var(--slate);
+}
+.chip.s-close  .chip-count { color: #B45309; }
+.chip.s-urgent .chip-count { color: var(--red); }
+.chip.s-bingo  .chip-count { color: #fff; font-size: 20px; }
+.chip-label { font-size: 8.5px; margin-top: 3px; opacity: .6; }
+
+/* ── Modal ── */
+.ov {
+  position: fixed; inset: 0;
+  background: rgba(19,28,39,.55);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; padding: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s;
+}
+.ov.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--white); border-radius: 12px;
+  width: 100%; max-width: 540px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.22);
+  overflow: hidden;
+  transform: translateY(10px); transition: transform .2s;
+}
+.ov.open .modal { transform: translateY(0); }
+.m-hdr {
+  background: var(--blue); color: #fff;
+  padding: 13px 15px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.m-title { font-size: 14px; font-weight: 700; }
+.m-rem-badge {
+  font-size: 11px; color: rgba(255,255,255,.75);
+  background: rgba(255,255,255,.15);
+  padding: 2px 8px; border-radius: 20px;
+}
+.m-close {
+  background: rgba(255,255,255,.18); border: none; color: #fff;
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  font-size: 13px; display: grid; place-items: center; margin-left: 10px;
+}
+.m-close:hover { background: rgba(255,255,255,.3); }
+.m-body { padding: 12px; }
+.m-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.m-cell {
+  border: 1px solid var(--cloud); border-radius: 5px;
+  padding: 6px 5px; min-height: 52px;
+  display: flex; flex-direction: column; gap: 1px;
+  transition: all .12s;
+}
+.m-cell.hit { background: var(--blue); border-color: var(--indigo); }
+.c-art { font-size: 7.5px; color: var(--steel); line-height: 1.3; }
+.c-tit { font-size: 9px; font-weight: 700; color: var(--slate); line-height: 1.35; flex: 1; }
+.c-yr  { font-size: 7.5px; color: var(--blue); font-variant-numeric: tabular-nums; }
+.m-cell.hit .c-art { color: rgba(255,255,255,.7); }
+.m-cell.hit .c-tit { color: #fff; }
+.m-cell.hit .c-yr  { color: rgba(255,255,255,.65); }
+
+/* ── Names / save ── */
+.hdr-save { font-size: 11.5px; color: rgba(255,255,255,.7); white-space: nowrap; }
+.hdr-save.dirty { color: #FDE68A; }
+.btn-reset.primary { background: #fff; color: var(--blue); border-color: #fff; }
+.btn-reset.primary:hover { background: var(--cloud); }
+.player-search {
+  width: 210px; padding: 5px 9px;
+  border: 1.5px solid var(--cloud); border-radius: 5px;
+  font-family: inherit; font-size: 12px;
+  color: var(--slate); background: var(--white); outline: none;
+}
+.player-search:focus { border-color: var(--blue); }
+.player-search::placeholder { color: var(--steel); opacity: 1; }
+.chip-name {
+  font-size: 11px; font-weight: 700; color: var(--blue);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-height: 14px; margin-bottom: 3px; padding: 0 2px;
+}
+.chip.s-bingo .chip-name { color: #fff; }
+.grp { margin-bottom: 14px; }
+.grp-hdr {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: none; border-bottom: 1px solid var(--cloud);
+  font-family: inherit; cursor: pointer; text-align: left;
+  padding: 4px 2px 7px; margin-bottom: 10px; color: var(--steel);
+}
+.grp-hdr:hover { color: var(--slate); }
+.grp-chev { font-size: 11px; transition: transform .15s; display: inline-block; }
+.grp.collapsed .grp-chev { transform: rotate(-90deg); }
+.grp-title { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.grp-count {
+  font-size: 10px; font-weight: 700; background: var(--cloud); color: var(--slate);
+  border-radius: 20px; padding: 1px 8px;
+}
+.grp.collapsed .grid { display: none; }
+.grp.collapsed .grp-hdr { margin-bottom: 0; }
+.no-match { grid-column: 1 / -1; color: var(--steel); font-size: 13px; padding: 20px 4px; }
+
+.m-hdr { gap: 8px; }
+.m-title, .m-rem-badge { white-space: nowrap; }
+.m-name {
+  flex: 1; min-width: 0;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.3);
+  border-radius: 5px; color: #fff; font-family: inherit; font-size: 13px;
+  padding: 5px 9px; outline: none;
+}
+.m-name::placeholder { color: rgba(255,255,255,.55); }
+.m-name:focus { background: rgba(255,255,255,.22); border-color: #fff; }
+.m-nav {
+  background: rgba(255,255,255,.18); border: none; color: #fff;
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  font-size: 16px; line-height: 1; display: grid; place-items: center; flex-shrink: 0;
+}
+.m-nav:hover { background: rgba(255,255,255,.3); }
+.m-hdr .m-close { margin-left: 2px; flex-shrink: 0; }
+
+.bn-help { font-size: 12px; color: var(--steel); line-height: 1.5; margin-bottom: 10px; }
+.bn-help code { background: var(--ice); padding: 1px 4px; border-radius: 3px; color: var(--slate); }
+.bn-edit {
+  display: flex; border: 1.5px solid var(--cloud); border-radius: 6px;
+  overflow: hidden; height: 340px;
+}
+.bn-edit:focus-within { border-color: var(--blue); }
+.bn-gutter {
+  width: 40px; flex-shrink: 0; background: var(--ice); color: var(--steel);
+  text-align: right; padding: 8px 8px 24px 0;
+  font: 12px/22px ui-monospace, Consolas, monospace;
+  white-space: pre; overflow: hidden; user-select: none;
+  border-right: 1px solid var(--cloud);
+}
+.bn-text {
+  flex: 1; border: none; outline: none; resize: none;
+  padding: 8px 10px; font: 13px/22px 'Segoe UI', system-ui, sans-serif;
+  color: var(--slate); white-space: pre; overflow: auto;
+}
+.bn-actions { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
+.bn-actions .sp { flex: 1; }
+.bn-btn {
+  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  padding: 7px 14px; border-radius: 5px; cursor: pointer;
+  border: 1.5px solid var(--cloud); background: var(--white); color: var(--slate);
+}
+.bn-btn:hover { background: var(--ice); }
+.bn-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.bn-btn.primary:hover { background: var(--indigo); }
+
+.toast {
+  position: fixed; top: 64px; left: 50%;
+  transform: translate(-50%, -12px);
+  background: var(--blue); color: #fff;
+  padding: 11px 20px; border-radius: 10px;
+  font-size: 15px; font-weight: 700; text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  z-index: 300; max-width: 80vw;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: all; cursor: pointer; }
+.toast.info { background: var(--slate); font-size: 13px; font-weight: 600; }
+
+/* ── Playlist & cards dialog ── */
+.modal-wide { max-width: 760px; display: flex; flex-direction: column; max-height: calc(100vh - 40px); }
+.dk-body { overflow: auto; padding: 14px 16px 16px; }
+.dk-sec { padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--cloud); }
+.dk-sec:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.dk-h { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); margin-bottom: 9px; }
+.dk-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.dk-row label { font-size: 12.5px; color: var(--slate); display: flex; align-items: center; gap: 7px; }
+.dk-row input[type=number] { width: 72px; }
+.dk-in {
+  font-family: inherit; font-size: 12.5px; color: var(--slate);
+  border: 1.5px solid var(--cloud); border-radius: 5px; padding: 5px 8px; outline: none; background: var(--white);
+}
+.dk-in:focus { border-color: var(--blue); }
+.dk-fields { display: grid; grid-template-columns: 90px 1fr; gap: 6px 10px; align-items: center; margin-bottom: 10px; font-size: 12px; color: var(--steel); }
+.dk-msg { font-size: 12.5px; color: var(--slate); min-height: 18px; margin-bottom: 8px; line-height: 1.45; }
+.dk-msg.err { color: var(--red); font-weight: 600; }
+.dk-msg.warn { color: #B45309; }
+.dk-table-wrap { max-height: 190px; overflow: auto; border: 1.5px solid var(--cloud); border-radius: 6px; }
+.dk-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dk-table th {
+  position: sticky; top: 0; background: var(--ice); text-align: left; z-index: 1;
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--steel);
+  padding: 6px 8px; border-bottom: 1px solid var(--cloud);
+}
+.dk-table td { padding: 2px 4px; border-bottom: 1px solid var(--ice); }
+.dk-table td.n { color: var(--steel); width: 30px; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
+.dk-table input {
+  width: 100%; border: 1px solid transparent; border-radius: 4px; padding: 3px 5px;
+  font-family: inherit; font-size: 12px; color: var(--slate); background: transparent; outline: none;
+}
+.dk-table input:hover { border-color: var(--cloud); }
+.dk-table input:focus { border-color: var(--blue); background: var(--white); }
+.dk-table td.yr { width: 62px; }
+.dk-table tr.nodate input.y { background: #FFF8EC; border-color: #F59E0B; }
+.dk-table tr.auto input.y { background: #EEF0FF; border-color: #887DFD; }
+.empty-note { padding: 22px 14px; font-size: 13px; color: var(--steel); line-height: 1.5; text-align: center; }
+.bn-btn:disabled { opacity: .45; cursor: default; }
+.bn-btn:disabled:hover { background: var(--white); }
+.bn-btn.primary:disabled:hover { background: var(--blue); }
+.dk-drop .modal { outline: 3px dashed var(--indigo); outline-offset: -8px; }
+</style>
+</head>
+<body>
+<header class="hdr">
+  <span class="hdr-brand">Worklinq</span>
+  <div class="hdr-div"></div>
+  <span class="hdr-title">Sommerbingo</span>
+  <span class="hdr-stat">Called: <strong id="n-called">0</strong> / <strong id="n-total">0</strong></span>
+  <span class="hdr-bingo-badge" id="bingo-badge">&#127881; <span id="n-bingo">0</span> BINGO</span>
+  <span class="hdr-save" id="save-state"></span>
+  <button class="btn-reset" onclick="openDeckDialog()" title="Load a playlist, generate cards, make the PDF">Playlist</button>
+  <button class="btn-reset" onclick="openNamesDialog()" title="Edit all player names at once">Names</button>
+  <button class="btn-reset primary" id="btn-save" onclick="saveFile()" title="Write playlist, cards and names into the HTML file (Ctrl+S)">Save file</button>
+  <button class="btn-reset" onclick="resetGame()">Reset</button>
+</header>
+
+<div class="app">
+  <aside class="songs">
+    <div class="songs-top">
+      <div class="search-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" class="search-input" id="search"
+          placeholder="Title, artist or year&hellip;" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="search-hint" id="search-hint"></div>
+      <button class="btn-draw" id="btn-draw" onclick="drawSong()">
+        <span>&#9654;</span> Draw random song
+      </button>
+    </div>
+    <div class="song-list" id="song-list"></div>
+  </aside>
+
+  <main class="cards">
+    <div class="cards-top">
+      <h2>Cards &mdash; sorted by progress</h2>
+      <input type="text" class="player-search" id="player-search"
+        placeholder="Find player or card #&hellip;" autocomplete="off" spellcheck="false">
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:#D97706"></div>2&ndash;3 left</div>
+        <div class="leg"><div class="leg-dot" style="background:#DC2626"></div>1 left</div>
+        <div class="leg"><div class="leg-dot" style="background:#352BA5"></div>BINGO!</div>
+      </div>
+    </div>
+    <div id="cards-grid"></div>
+  </main>
+</div>
+
+<div class="ov" id="ov">
+  <div class="modal">
+    <div class="m-hdr">
+      <button class="m-nav" id="m-prev" title="Previous card (Shift+Enter)">&#8249;</button>
+      <span class="m-title" id="m-title">Card #1</span>
+      <input type="text" class="m-name" id="m-name" placeholder="Player name&hellip;"
+        maxlength="40" autocomplete="off" spellcheck="false">
+      <span class="m-rem-badge" id="m-rem"></span>
+      <button class="m-nav" id="m-next" title="Next card (Enter)">&#8250;</button>
+      <button class="m-close" id="m-close">&#10005;</button>
+    </div>
+    <div class="m-body">
+      <div class="m-grid" id="m-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-names">
+  <div class="modal">
+    <div class="m-hdr">
+      <span class="m-title">Player names</span>
+      <span class="m-rem-badge" id="bn-count" style="margin-left:auto"></span>
+      <button class="m-close" id="bn-close">&#10005;</button>
+    </div>
+    <div class="m-body">
+      <p class="bn-help">One name per line &mdash; line 1 is Card 1, line 2 is Card 2, and so on.
+        Leave a line empty for an unassigned card. The same name on several cards is fine.
+        You can also paste lines like <code>12, Anna</code> to assign by card number
+        (cards you don&rsquo;t mention keep their name).</p>
+      <div class="bn-edit">
+        <div class="bn-gutter" id="bn-gutter"></div>
+        <textarea class="bn-text" id="bn-text" wrap="off" spellcheck="false"></textarea>
+      </div>
+      <div class="bn-actions">
+        <button class="bn-btn" id="bn-copy">Copy list</button>
+        <button class="bn-btn" id="bn-clear">Clear all</button>
+        <span class="sp"></span>
+        <button class="bn-btn" id="bn-cancel">Cancel</button>
+        <button class="bn-btn primary" id="bn-apply">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="ov" id="ov-deck">
+  <div class="modal modal-wide">
+    <div class="m-hdr">
+      <span class="m-title">Playlist &amp; cards</span>
+      <span class="m-rem-badge" id="dk-status" style="margin-left:auto"></span>
+      <button class="m-close" id="dk-close">&#10005;</button>
+    </div>
+    <div class="dk-body">
+      <section class="dk-sec">
+        <div class="dk-h">1 &middot; Playlist</div>
+        <div class="dk-row">
+          <button class="bn-btn primary" id="dk-load">Load Spotify CSV&hellip;</button>
+          <button class="bn-btn" id="dk-clear">Clear playlist</button>
+          <button class="bn-btn" id="dk-builtin">Restore built-in deck</button>
+          <button class="bn-btn" id="dk-lookup" title="Searches MusicBrainz (free, no account) for songs without a year">Look up missing years</button>
+          <input type="file" id="dk-file" accept=".csv,.txt,text/csv" hidden>
+        </div>
+        <p class="bn-help">Export a public playlist with the
+          <a href="https://spotify-exporter-frontend.vercel.app/" target="_blank" rel="noopener">Spotify Playlist/Song Exporter</a>
+          and load the CSV here (or drop the file on this window). The export has no release year, so years are
+          filled in from songs the app already knows, then looked up on <a href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a>
+          (earliest release; needs internet, about one song per second). Looked-up years are tinted blue &mdash; worth a quick check.
+          Anything not found stays highlighted for you to type in. Artist, title and year can all be edited.</p>
+        <div class="dk-msg" id="dk-msg"></div>
+        <div class="dk-table-wrap" id="dk-table-wrap">
+          <table class="dk-table">
+            <thead><tr><th>#</th><th>Artist</th><th>Title</th><th>Year</th></tr></thead>
+            <tbody id="dk-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="dk-sec">
+        <div class="dk-h">2 &middot; Cards</div>
+        <div class="dk-row">
+          <label>Number of cards <input type="number" class="dk-in" id="dk-ncards" min="1" max="500" value="70"></label>
+          <button class="bn-btn primary" id="dk-gen">Generate cards</button>
+        </div>
+        <p class="bn-help" style="margin-bottom:0">Every card gets 15 different songs. Songs are spread so each one lands on about the same number of cards,
+          cards overlap as little as possible, and each card mixes decades. Generating replaces the current cards and clears player names and called songs.</p>
+      </section>
+      <section class="dk-sec">
+        <div class="dk-h">3 &middot; PDF</div>
+        <div class="dk-fields">
+          <span>Title</span><input type="text" class="dk-in" id="dk-pdf-title" maxlength="60">
+          <span>Top right</span><input type="text" class="dk-in" id="dk-pdf-brand" maxlength="40" placeholder="(optional)">
+          <span>Checklist note</span><input type="text" class="dk-in" id="dk-pdf-sub" maxlength="120">
+        </div>
+        <div class="dk-row">
+          <button class="bn-btn primary" id="dk-pdf">Download PDF</button>
+          <span class="bn-help" style="margin:0" id="dk-pdfinfo"></span>
+        </div>
+      </section>
+      <div class="bn-help" style="margin:10px 0 0;text-align:right;opacity:.7">Version 2026-10-02 &middot; with year lookup</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PRISTINE = '<!doctype html>\n' + document.documentElement.outerHTML;  // clean copy of this page, used by "Save file"
+const D = {"title":"Sommerbingo","sheets":[[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Earth","title":"September","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Oasis","title":"Wonderwall","year":1995},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Earth","title":"September","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"Stromae","title":"Alors on danse","year":2010}],[{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Earth","title":"September","year":1978},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"Earth","title":"September","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Gyllene Tider","title":"Sommartider","year":1981},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Metallica","title":"Enter Sandman","year":1991},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010}],[{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Sash!","title":"Ecuador","year":1997},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"PSY","title":"Gangnam Style","year":2012},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Enrique Iglesias","title":"Bailando","year":2014},{"artist":"Camila Cabello","title":"Havana","year":2017}],[{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Earth","title":"September","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Oasis","title":"Wonderwall","year":1995},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Camila Cabello","title":"Havana","year":2017},{"artist":"Luis Fonsi","title":"Despacito","year":2017},{"artist":"Ed Sheeran","title":"Shape of You","year":2017}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"Miranda","title":"Vamos a la Playa","year":2012}],[{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Gyllene Tider","title":"Sommartider","year":1981},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"Taylor Swift","title":"Shake It Off","year":2014}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Bee Gees","title":"Stayin' Alive","year":1977},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"Enrique Iglesias","title":"Bailando","year":2014}],[{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010},{"artist":"Pharrell Williams","title":"Happy","year":2013}],[{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Bee Gees","title":"Stayin' Alive","year":1977},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Gyllene Tider","title":"Sommartider","year":1981},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"Enrique Iglesias","title":"Bailando","year":2014},{"artist":"Sia","title":"Cheap Thrills","year":2016}],[{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Eric Prydz","title":"Call on Me","year":2004}],[{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"Earth","title":"September","year":1978},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014},{"artist":"Enrique Iglesias","title":"Bailando","year":2014},{"artist":"DNCE","title":"Cake By The Ocean","year":2015},{"artist":"Ed Sheeran","title":"Shape of You","year":2017},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"The Police","title":"Every Breath You Take","year":1983},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Oasis","title":"Wonderwall","year":1995},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014},{"artist":"Ed Sheeran","title":"Shape of You","year":2017},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Miranda","title":"Vamos a la Playa","year":2012},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Enrique Iglesias","title":"Bailando","year":2014},{"artist":"DNCE","title":"Cake By The Ocean","year":2015},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"Enrique Iglesias","title":"Bailando","year":2014},{"artist":"Ed Sheeran","title":"Shape of You","year":2017},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"The Police","title":"Every Breath You Take","year":1983},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Enrique Iglesias","title":"Bailando","year":2014}],[{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Earth","title":"September","year":1978},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Metallica","title":"Enter Sandman","year":1991},{"artist":"Sash!","title":"Ecuador","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Sia","title":"Cheap Thrills","year":2016}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Gyllene Tider","title":"Sommartider","year":1981},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Oasis","title":"Wonderwall","year":1995},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Rihanna","title":"We Found Love","year":2011}],[{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Metallica","title":"Enter Sandman","year":1991},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"DNCE","title":"Cake By The Ocean","year":2015},{"artist":"Ed Sheeran","title":"Shape of You","year":2017},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Gyllene Tider","title":"Sommartider","year":1981},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"PSY","title":"Gangnam Style","year":2012}],[{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Metallica","title":"Enter Sandman","year":1991},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"DNCE","title":"Cake By The Ocean","year":2015}],[{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Earth","title":"September","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Taylor Swift","title":"Shake It Off","year":2014}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Earth","title":"September","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Taylor Swift","title":"Shake It Off","year":2014}],[{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Earth","title":"September","year":1978},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Miranda","title":"Vamos a la Playa","year":2012},{"artist":"Sia","title":"Cheap Thrills","year":2016},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Earth","title":"September","year":1978},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Taylor Swift","title":"Shake It Off","year":2014},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Metallica","title":"Enter Sandman","year":1991},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010},{"artist":"Pharrell Williams","title":"Happy","year":2013}],[{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"PSY","title":"Gangnam Style","year":2012},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Miranda","title":"Vamos a la Playa","year":2012},{"artist":"PSY","title":"Gangnam Style","year":2012},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Taylor Swift","title":"Shake It Off","year":2014},{"artist":"Camila Cabello","title":"Havana","year":2017},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Oasis","title":"Wonderwall","year":1995},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Ed Sheeran","title":"Shape of You","year":2017}],[{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Sia","title":"Cheap Thrills","year":2016}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Oasis","title":"Wonderwall","year":1995},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"Miranda","title":"Vamos a la Playa","year":2012},{"artist":"Enrique Iglesias","title":"Bailando","year":2014}],[{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Bee Gees","title":"Stayin' Alive","year":1977},{"artist":"Earth","title":"September","year":1978},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Metallica","title":"Enter Sandman","year":1991},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Miranda","title":"Vamos a la Playa","year":2012},{"artist":"DNCE","title":"Cake By The Ocean","year":2015}],[{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Sash!","title":"Ecuador","year":1997},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010},{"artist":"Miranda","title":"Vamos a la Playa","year":2012},{"artist":"Pharrell Williams","title":"Happy","year":2013}],[{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"The Police","title":"Every Breath You Take","year":1983},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Oasis","title":"Wonderwall","year":1995},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Ed Sheeran","title":"Shape of You","year":2017}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Bee Gees","title":"Stayin' Alive","year":1977},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"Ed Sheeran","title":"Shape of You","year":2017}],[{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Gyllene Tider","title":"Sommartider","year":1981},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010}],[{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Gyllene Tider","title":"Sommartider","year":1981},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Sash!","title":"Ecuador","year":1997},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Bob Sinclar","title":"Love Generation","year":2005}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"Taylor Swift","title":"Shake It Off","year":2014},{"artist":"Sia","title":"Cheap Thrills","year":2016}],[{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Luis Fonsi","title":"Despacito","year":2017},{"artist":"Camila Cabello","title":"Havana","year":2017}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"The Police","title":"Every Breath You Take","year":1983},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Sia","title":"Cheap Thrills","year":2016},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Bee Gees","title":"Stayin' Alive","year":1977},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Gyllene Tider","title":"Sommartider","year":1981},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Village People","title":"YMCA","year":1978},{"artist":"The Police","title":"Every Breath You Take","year":1983},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014},{"artist":"Taylor Swift","title":"Shake It Off","year":2014},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Earth","title":"September","year":1978},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Ed Sheeran","title":"Shape of You","year":2017}],[{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"The Police","title":"Every Breath You Take","year":1983},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Ed Sheeran","title":"Shape of You","year":2017}],[{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Earth","title":"September","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Sia","title":"Cheap Thrills","year":2016}],[{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"a-ha","title":"Take on Me","year":1984},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Metallica","title":"Enter Sandman","year":1991},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Enrique Iglesias","title":"Bailando","year":2014},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014},{"artist":"Taylor Swift","title":"Shake It Off","year":2014}],[{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Laid Back","title":"Sunshine Reggae","year":1983},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"DNCE","title":"Cake By The Ocean","year":2015}],[{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Earth","title":"September","year":1978},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"PSY","title":"Gangnam Style","year":2012},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Enrique Iglesias","title":"Bailando","year":2014}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Bee Gees","title":"Stayin' Alive","year":1977},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Taylor Swift","title":"Shake It Off","year":2014},{"artist":"Camila Cabello","title":"Havana","year":2017},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"The Police","title":"Every Breath You Take","year":1983},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Sia","title":"Cheap Thrills","year":2016},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Pharrell Williams","title":"Happy","year":2013},{"artist":"Camila Cabello","title":"Havana","year":2017},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Metallica","title":"Enter Sandman","year":1991},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Sia","title":"Cheap Thrills","year":2016},{"artist":"Ed Sheeran","title":"Shape of You","year":2017},{"artist":"Camila Cabello","title":"Havana","year":2017},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Earth","title":"September","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Nirvana","title":"Smells Like Teen Spirit","year":1991},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Katrina & The Waves","title":"Walking On Sunshine","year":1985},{"artist":"Oasis","title":"Wonderwall","year":1995},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"PSY","title":"Gangnam Style","year":2012},{"artist":"Miranda","title":"Vamos a la Playa","year":2012},{"artist":"Camila Cabello","title":"Havana","year":2017},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"ABBA","title":"Dancing Queen","year":1976},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"Fedde Le Grand","title":"Put Your Hands Up 4 Detroit","year":2006},{"artist":"Rihanna","title":"We Found Love","year":2011}],[{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Sabrina","title":"Boys (Summertime Love)","year":1987},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Stromae","title":"Alors on danse","year":2010},{"artist":"Miranda","title":"Vamos a la Playa","year":2012},{"artist":"DNCE","title":"Cake By The Ocean","year":2015},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Rihanna","title":"We Found Love","year":2011},{"artist":"PSY","title":"Gangnam Style","year":2012},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014},{"artist":"Camila Cabello","title":"Havana","year":2017}],[{"artist":"The Champs","title":"Tequila","year":1958},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Electric Light Orchestra","title":"Mr. Blue Sky","year":1977},{"artist":"John Travolta","title":"Summer Nights","year":1978},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Sash!","title":"Ecuador","year":1997},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Kelis","title":"Milkshake","year":2003},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Eric Prydz","title":"Call on Me","year":2004},{"artist":"Sérgio Mendes","title":"Mas Que Nada","year":2006}],[{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Gyllene Tider","title":"Sommartider","year":1981},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Bon Jovi","title":"Livin' on a Prayer","year":1986},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014},{"artist":"Enrique Iglesias","title":"Bailando","year":2014},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"Joe Dassin","title":"Les Champs-Elysées","year":1969},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Earth","title":"September","year":1978},{"artist":"The Police","title":"Every Breath You Take","year":1983},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Los Del Rio","title":"Macarena","year":1993},{"artist":"Spice Girls","title":"Spice Up Your Life","year":1997},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Katy Perry","title":"California Gurls","year":2010},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010},{"artist":"PSY","title":"Gangnam Style","year":2012},{"artist":"Taylor Swift","title":"Shake It Off","year":2014},{"artist":"Camila Cabello","title":"Havana","year":2017}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Ritchie Valens","title":"La Bamba","year":1958},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Earth","title":"September","year":1978},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Smash Mouth","title":"All Star","year":1999},{"artist":"Vengaboys","title":"We're Going to Ibiza!","year":1999},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Bob Sinclar","title":"Love Generation","year":2005},{"artist":"MIKA","title":"Relax, Take It Easy","year":2007},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"Jerry Lee Lewis","title":"Great Balls Of Fire","year":1957},{"artist":"Marvin Gaye","title":"Ain't No Mountain High Enough","year":1967},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"Bee Gees","title":"Stayin' Alive","year":1977},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"AC/DC","title":"Thunderstruck","year":1990},{"artist":"Sash!","title":"Ecuador","year":1997},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Pet Shop Boys","title":"New York City Boy","year":1999},{"artist":"Lou Bega","title":"Mambo No. 5","year":1999},{"artist":"Duck Sauce","title":"Barbra Streisand","year":2010},{"artist":"Miranda","title":"Vamos a la Playa","year":2012}],[{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Mungo Jerry","title":"In the Summertime","year":1970},{"artist":"Dolly Parton","title":"Jolene","year":1973},{"artist":"Bob Marley","title":"Three Little Birds","year":1977},{"artist":"Barry Manilow","title":"Copacabana","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Elton John","title":"I'm Still Standing","year":1983},{"artist":"Cyndi Lauper","title":"Girls Just Want to Have Fun","year":1983},{"artist":"Oasis","title":"Wonderwall","year":1995},{"artist":"Robbie Williams","title":"Let Me Entertain You","year":1997},{"artist":"Outkast","title":"Hey Ya!","year":2003},{"artist":"Mark Ronson","title":"Uptown Funk","year":2014},{"artist":"Ed Sheeran","title":"Shape of You","year":2017},{"artist":"Camila Cabello","title":"Havana","year":2017},{"artist":"Tones And I","title":"Dance Monkey","year":2019}],[{"artist":"The Beatles","title":"Twist And Shout","year":1963},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Earth","title":"September","year":1978},{"artist":"Whitney Houston","title":"I Wanna Dance with Somebody","year":1987},{"artist":"Madonna","title":"La Isla Bonita","year":1987},{"artist":"Playahitty","title":"The Summer Is Magic","year":1994},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"O-Zone","title":"Dragostea Din Tei","year":2003},{"artist":"The Underdog Project","title":"Summer Jam 2003","year":2003},{"artist":"Daddy Yankee","title":"Gasolina","year":2004},{"artist":"50 Cent","title":"Candy Shop","year":2005},{"artist":"Shakira","title":"Waka Waka (This Time for Africa)","year":2010},{"artist":"Taylor Swift","title":"Shake It Off","year":2014},{"artist":"DNCE","title":"Cake By The Ocean","year":2015},{"artist":"Luis Fonsi","title":"Despacito","year":2017}],[{"artist":"Antonio Vivaldi","title":"The Four Seasons - Spring","year":1725},{"artist":"Dean Martin","title":"Sway","year":1954},{"artist":"The Beach Boys","title":"Surfin' U.S.A.","year":1963},{"artist":"Tom Jones","title":"It's Not Unusual","year":1965},{"artist":"Village People","title":"YMCA","year":1978},{"artist":"Queen","title":"Don't Stop Me Now","year":1979},{"artist":"Michael Jackson","title":"Billie Jean","year":1982},{"artist":"Bryan Adams","title":"Summer Of '69","year":1985},{"artist":"Guns N' Roses","title":"Sweet Child O' Mine","year":1987},{"artist":"Aqua","title":"Barbie Girl","year":1997},{"artist":"Sash!","title":"Ecuador","year":1997},{"artist":"Ricky Martin","title":"Livin' la Vida Loca","year":1999},{"artist":"Las Ketchup","title":"The Ketchup Song (Aserejé)","year":2002},{"artist":"PSY","title":"Gangnam Style","year":2012},{"artist":"Luis Fonsi","title":"Despacito","year":2017}]]};
+
+/*NAMES_START*/const SAVED = {"ts":0,"names":[]};/*NAMES_END*/
+
+// ── Data setup ─────────────────────────────────────────
+const BUILTIN_SHEETS = D.sheets;     // the deck that is baked into this file
+const KEY = s => s.id !== undefined ? '#' + s.id : s.artist + '\x00' + s.title + '\x00' + s.year;
+let songMap = new Map(), s2c = new Map(), songs = [];
+
+// ── State ──────────────────────────────────────────────
+const called = new Set();
+const rem = [];
+let modalCard = -1;
+let query = '';
+let deck = null;   // null = built-in deck; else { name, playlist:[{id,artist,title,year}], cards:[[playlist index x 15]] }
+
+function recomputeRem() {
+  rem.length = 0;
+  D.sheets.forEach(sh => rem.push(sh.reduce((n, s) => n + (called.has(KEY(s)) ? 0 : 1), 0)));
+}
+
+function rebuildData() {
+  songMap = new Map();
+  if (deck) deck.playlist.forEach(s => songMap.set(KEY(s), s));
+  D.sheets.forEach(sh => sh.forEach(s => { const k = KEY(s); if (!songMap.has(k)) songMap.set(k, s); }));
+  s2c = new Map();
+  D.sheets.forEach((sh, ci) => sh.forEach(s => {
+    const k = KEY(s);
+    if (!s2c.has(k)) s2c.set(k, []);
+    s2c.get(k).push(ci);
+  }));
+  songs = [...songMap.values()].sort((a, b) => {
+    const t = a.title.localeCompare(b.title, 'nb');
+    return t !== 0 ? t : a.artist.localeCompare(b.artist, 'nb');
+  });
+  [...called].forEach(k => { if (!songMap.has(k)) called.delete(k); });
+  recomputeRem();
+}
+
+// ── Names / deck persistence state ─────────────────────
+function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+const BASE_ID = hashStr(JSON.stringify(BUILTIN_SHEETS));
+const LS_KEY = 'sommerbingo-state:' + BASE_ID;
+const LEGACY_KEY = 'sommerbingo-names:' + BUILTIN_SHEETS.length + ':' + BASE_ID;
+const YEARS_KEY = 'sommerbingo-years';
+const NAME_MAX = 40;
+const names = [];
+let nameQuery = '';
+let dirty = false;        // state differs from what is saved in the HTML file
+let fileHandle = null;    // set once the user has picked the file to overwrite
+let toastTimer = null;
+const UI_KEY = LS_KEY + ':ui';
+const collapsed = { named: false, unnamed: false };
+try { Object.assign(collapsed, JSON.parse(localStorage.getItem(UI_KEY) || '{}')); } catch (e) {}
+const pdfOpts = { title: 'Sommerbingo', brand: 'Worklinq', subtitle: 'Sang-liste \u2014 kryds af efterh\u00e5nden som sangene spilles' };
+
+function sheetsFromDeck(dk) {
+  const yr = s => s.year > 0 ? s.year : 99999;
+  return dk.cards.map(c => c.slice()
+    .sort((a, b) => (yr(dk.playlist[a]) - yr(dk.playlist[b])) || a - b)
+    .map(i => dk.playlist[i]));
+}
+function deckToJson(dk) {
+  return dk ? { name: dk.name, playlist: dk.playlist.map(s => [s.artist, s.title, s.year || 0]), cards: dk.cards } : null;
+}
+function deckFromJson(j) {
+  if (!j || !Array.isArray(j.playlist) || !Array.isArray(j.cards)) return null;
+  const playlist = j.playlist.map((r, i) => ({ id: i, artist: String(r[0] || ''), title: String(r[1] || ''), year: parseInt(r[2], 10) || 0 }));
+  const cards = j.cards.filter(c => Array.isArray(c) && c.length && c.every(i => Number.isInteger(i) && i >= 0 && i < playlist.length));
+  return { name: String(j.name || ''), playlist, cards };
+}
+function useDeck(dk) {     // swap the data only; callers rebuild the screen
+  deck = dk;
+  D.sheets = dk ? sheetsFromDeck(dk) : BUILTIN_SHEETS;
+}
+function resetNames() { names.length = 0; D.sheets.forEach(() => names.push('')); }
+
+(function loadState() {
+  let src = { ts: SAVED.ts || 0, names: SAVED.names, deck: SAVED.deck, pdf: SAVED.pdf };
+  try {
+    let raw = localStorage.getItem(LS_KEY) || localStorage.getItem(LEGACY_KEY);
+    const o = raw ? JSON.parse(raw) : null;
+    if (o && Array.isArray(o.names) && (o.ts || 0) > src.ts) { src = o; dirty = true; }
+  } catch (e) {}
+  useDeck(deckFromJson(src.deck));
+  resetNames();
+  (Array.isArray(src.names) ? src.names : []).forEach((v, i) => { if (i < names.length) names[i] = String(v || '').trim().slice(0, NAME_MAX); });
+  if (src.pdf) ['title', 'brand', 'subtitle'].forEach(f => { if (typeof src.pdf[f] === 'string') pdfOpts[f] = src.pdf[f]; });
+})();
+
+function refreshAll() {      // rebuild the whole screen after the data changed
+  rebuildData();
+  searchEl.value = '';
+  query = '';
+  document.getElementById('n-total').textContent = songs.length;
+  document.getElementById('n-called').textContent = called.size;
+  document.getElementById('btn-draw').disabled = songs.length === 0 || called.size >= songs.length;
+  buildSongList();
+  buildCardGrid();
+  closeModal();
+}
+
+// ── Boot ───────────────────────────────────────────────
+const searchEl = document.getElementById('search');
+refreshAll();
+searchEl.focus();
+
+// ── Search ─────────────────────────────────────────────
+searchEl.addEventListener('input', function () {
+  query = this.value;
+  applyFilter();
+});
+
+searchEl.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') {
+    const { visible, lastIdx } = applyFilter();
+    if (visible === 1 && lastIdx >= 0) {
+      toggle(lastIdx);
+      this.value = '';
+      query = '';
+      applyFilter();
+      // Scroll the called song into view so the user sees the flash
+      const el = document.querySelector('.song-item[data-i="' + lastIdx + '"]');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      this.focus();
+    }
+  }
+});
+
+function applyFilter() {
+  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  let visible = 0, lastIdx = -1;
+  document.querySelectorAll('.song-item').forEach(el => {
+    const i = parseInt(el.dataset.i, 10);
+    const s = songs[i];
+    const hay = (s.artist + ' ' + s.title + ' ' + (s.year || '')).toLowerCase();
+    const show = !tokens.length || tokens.every(t => hay.includes(t));
+    el.style.display = show ? '' : 'none';
+    if (show) { visible++; lastIdx = i; }
+  });
+
+  const hint = document.getElementById('search-hint');
+  if (!tokens.length) {
+    hint.innerHTML = '';
+  } else if (visible === 0) {
+    hint.innerHTML = '<span class="hint-none">No matches</span>';
+  } else if (visible === 1) {
+    hint.innerHTML = '<span class="hint-one">1 match &mdash; press Enter to call</span>';
+  } else {
+    hint.textContent = visible + ' matches';
+  }
+  return { visible, lastIdx };
+}
+
+// ── Song list ──────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildSongList() {
+  const ul = document.getElementById('song-list');
+  ul.innerHTML = !songs.length ? '<div class="empty-note">No songs loaded.<br>Click <b>Playlist</b> in the header to load a Spotify CSV.</div>' : songs.map((s, i) => {
+    const on = called.has(KEY(s));
+    return '<div class="song-item' + (on ? ' called' : '') + '" data-i="' + i + '" onclick="toggle(' + i + ')">' +
+      '<div class="chk"><div class="chk-mark"></div></div>' +
+      '<div class="song-info">' +
+        '<div class="song-t">' + esc(s.title) + '</div>' +
+        '<div class="song-a">' + esc(s.artist) + '</div>' +
+      '</div>' +
+      '<div class="song-y">' + (s.year || '') + '</div>' +
+    '</div>';
+  }).join('');
+  applyFilter();  // restore current filter after every rebuild
+}
+
+// ── Card grid ──────────────────────────────────────────
+function matchCard(ci, tokens) {
+  if (!tokens.length) return true;
+  const nm = (names[ci] || '').toLowerCase();
+  return tokens.every(tok => /^\d+$/.test(tok) ? (ci + 1 === parseInt(tok, 10) || nm.includes(tok)) : nm.includes(tok));
+}
+
+function chipHtml(ci, withName) {
+  const r = rem[ci];
+  let cls = 's-default', lbl = 'to go';
+  if (r === 0)     { cls = 's-bingo';  lbl = 'BINGO!'; }
+  else if (r === 1) { cls = 's-urgent'; }
+  else if (r <= 3)  { cls = 's-close'; }
+  return '<div class="chip ' + cls + '" id="chip-' + ci + '" onclick="openModal(' + ci + ')"' +
+      (names[ci] ? ' title="' + esc(names[ci]) + '"' : '') + '>' +
+    '<div class="chip-num">Card ' + (ci + 1) + '</div>' +
+    (withName ? '<div class="chip-name">' + esc(names[ci]) + '</div>' : '') +
+    '<div class="chip-count">' + (r === 0 ? '&#9733;' : r) + '</div>' +
+    '<div class="chip-label">' + lbl + '</div>' +
+  '</div>';
+}
+
+function groupHtml(key, label, list) {
+  if (!list.length) return '';
+  const open = !collapsed[key];
+  return '<section class="grp' + (open ? '' : ' collapsed') + '">' +
+    '<button class="grp-hdr" onclick="toggleGroup(\'' + key + '\')" aria-expanded="' + open + '">' +
+      '<span class="grp-chev">&#9662;</span><span class="grp-title">' + label + '</span>' +
+      '<span class="grp-count">' + list.length + '</span>' +
+    '</button>' +
+    '<div class="grid">' + list.map(ci => chipHtml(ci, key === 'named')).join('') + '</div>' +
+  '</section>';
+}
+
+function toggleGroup(key) {
+  collapsed[key] = !collapsed[key];
+  try { localStorage.setItem(UI_KEY, JSON.stringify(collapsed)); } catch (e) {}
+  buildCardGrid();
+}
+
+function buildCardGrid() {
+  const order = D.sheets.map((_, i) => i).sort((a, b) => rem[a] - rem[b] || a - b);
+  const tokens = nameQuery.toLowerCase().replace(/#/g, '').split(/\s+/).filter(Boolean);
+  const shown = order.filter(ci => matchCard(ci, tokens));
+  const grid = document.getElementById('cards-grid');
+  grid.innerHTML = !D.sheets.length
+    ? '<div class="no-match">' + (songs.length ? 'No cards yet &mdash; open <b>Playlist</b> and press <b>Generate cards</b>.' : 'No playlist loaded &mdash; open <b>Playlist</b> to load a Spotify CSV.') + '</div>'
+    : shown.length
+    ? groupHtml('named', 'With names', shown.filter(ci => names[ci])) +
+      groupHtml('unnamed', 'Without names', shown.filter(ci => !names[ci]))
+    : '<div class="no-match">No cards match &ldquo;' + esc(nameQuery) + '&rdquo;</div>';
+
+  const winners = D.sheets.map((_, i) => i).filter(i => rem[i] === 0);
+  const n = winners.length;
+  document.getElementById('n-bingo').textContent = n;
+  const badge = document.getElementById('bingo-badge');
+  badge.classList.toggle('visible', n > 0);
+  badge.querySelector('span').textContent = n;
+  badge.title = winners.map(i => (names[i] ? names[i] + ' ' : '') + '(Card ' + (i + 1) + ')').join(', ');
+}
+
+// ── Toggle ─────────────────────────────────────────────
+function toggle(i) {
+  const s = songs[i];
+  const k = KEY(s);
+  const was = called.has(k);
+  const wasBingo = rem.map(r => r === 0);
+  if (was) { called.delete(k); (s2c.get(k) || []).forEach(ci => rem[ci]++); }
+  else     { called.add(k);    (s2c.get(k) || []).forEach(ci => rem[ci]--); }
+
+  document.getElementById('n-called').textContent = called.size;
+  document.getElementById('btn-draw').disabled = called.size >= songs.length;
+
+  const el = document.querySelector('.song-item[data-i="' + i + '"]');
+  if (el) {
+    el.classList.toggle('called', !was);
+    if (!was) {
+      el.classList.add('flash');
+      setTimeout(() => el.classList.remove('flash'), 500);
+    }
+  }
+
+  buildCardGrid();
+  if (modalCard >= 0) refreshModal(modalCard);
+  if (!was) {
+    const fresh = rem.map((r, ci) => (r === 0 && !wasBingo[ci]) ? ci : -1).filter(ci => ci >= 0);
+    if (fresh.length) announceBingo(fresh);
+  }
+}
+
+// ── Draw ───────────────────────────────────────────────
+function drawSong() {
+  const pool = songs.map((_, i) => i).filter(i => !called.has(KEY(songs[i])));
+  if (!pool.length) return;
+  const i = pool[Math.floor(Math.random() * pool.length)];
+  const el = document.querySelector('.song-item[data-i="' + i + '"]');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toggle(i);
+}
+
+// ── Reset ──────────────────────────────────────────────
+function resetGame() {
+  if (called.size > 0 && !confirm('Reset all called songs and restart the game?')) return;
+  searchEl.value = '';
+  query = '';
+  called.clear();
+  recomputeRem();
+  document.getElementById('n-called').textContent = 0;
+  document.getElementById('btn-draw').disabled = false;
+  buildSongList();   // calls applyFilter() internally (noop: query is now '')
+  buildCardGrid();
+  closeModal();
+  searchEl.focus();
+}
+
+// ── Modal ──────────────────────────────────────────────
+function openModal(ci) {
+  modalCard = ci;
+  document.getElementById('m-title').textContent = 'Card #' + (ci + 1);
+  document.getElementById('m-name').value = names[ci];
+  refreshModal(ci);
+  document.getElementById('ov').classList.add('open');
+  if (!names[ci]) setTimeout(() => document.getElementById('m-name').focus(), 0);
+}
+
+function refreshModal(ci) {
+  const r = rem[ci];
+  document.getElementById('m-rem').textContent = r === 0 ? 'BINGO!' : r + ' remaining';
+
+  const sh = D.sheets[ci];
+  const ROWS = 3, COLS = 5;
+  const mgrid = document.getElementById('m-grid');
+  mgrid.innerHTML = '';
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const idx = col * ROWS + row;   // column-major, oldest at top matches PDF
+      const s = sh[idx];
+      const hit = called.has(KEY(s));
+      const div = document.createElement('div');
+      div.className = 'm-cell' + (hit ? ' hit' : '');
+      div.innerHTML = '<div class="c-art">' + esc(s.artist) + '</div>' +
+        '<div class="c-tit">' + esc(s.title) + '</div>' +
+        '<div class="c-yr">' + (s.year || '') + '</div>';
+      mgrid.appendChild(div);
+    }
+  }
+}
+
+function closeModal() {
+  modalCard = -1;
+  document.getElementById('ov').classList.remove('open');
+}
+
+document.getElementById('ov').addEventListener('click', e => {
+  if (e.target === document.getElementById('ov')) closeModal();
+});
+document.getElementById('m-close').addEventListener('click', closeModal);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('ov-deck').classList.contains('open')) {
+      closeDeckDialog();
+    } else if (document.getElementById('ov-names').classList.contains('open')) {
+      closeNamesDialog();
+    } else if (document.getElementById('ov').classList.contains('open')) {
+      closeModal();
+    } else if (query) {
+      searchEl.value = '';
+      query = '';
+      applyFilter();
+      searchEl.focus();
+    }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    saveFile();
+  }
+});
+
+// ══ Player names ═══════════════════════════════════════
+function persistLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ ts: Date.now(), names: names, deck: deckToJson(deck), pdf: pdfOpts })); } catch (e) {}
+}
+
+function updateSaveState(msg) {
+  const el = document.getElementById('save-state');
+  if (msg) { el.textContent = msg; el.classList.remove('dirty'); return; }
+  if (dirty) { el.textContent = '\u25CF Changes not saved to file'; el.classList.add('dirty'); }
+  else       { el.textContent = (names.some(Boolean) || deck) ? 'Saved in file' : ''; el.classList.remove('dirty'); }
+}
+
+function setName(ci, value) {
+  names[ci] = value.trim().slice(0, NAME_MAX);
+  dirty = true;
+  persistLocal();
+  updateSaveState();
+  buildCardGrid();
+}
+
+function showToast(html, kind, ms) {
+  const t = document.getElementById('toast');
+  t.innerHTML = html;
+  t.className = 'toast ' + (kind || '') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), ms || 4000);
+}
+document.getElementById('toast').addEventListener('click', function () { this.classList.remove('show'); });
+
+function announceBingo(list) {
+  const who = list.map(ci => names[ci]
+    ? esc(names[ci]) + ' <span style="opacity:.7;font-weight:500">(Card ' + (ci + 1) + ')</span>'
+    : 'Card ' + (ci + 1)).join(', ');
+  showToast('&#127881; BINGO! ' + who, 'bingo', 10000);
+}
+
+// Player search
+const playerSearch = document.getElementById('player-search');
+playerSearch.addEventListener('input', function () { nameQuery = this.value; buildCardGrid(); });
+playerSearch.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { this.value = ''; nameQuery = ''; buildCardGrid(); e.stopPropagation(); }
+});
+
+// Modal name field + prev/next
+const mName = document.getElementById('m-name');
+function gotoCard(ci) {
+  const n = D.sheets.length;
+  ci = ((ci % n) + n) % n;
+  modalCard = ci;
+  document.getElementById('m-title').textContent = 'Card #' + (ci + 1);
+  mName.value = names[ci];
+  refreshModal(ci);
+  mName.focus();
+  mName.select();
+}
+mName.addEventListener('input', function () { if (modalCard >= 0) setName(modalCard, this.value); });
+mName.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && modalCard >= 0) { e.preventDefault(); gotoCard(modalCard + (e.shiftKey ? -1 : 1)); }
+});
+document.getElementById('m-prev').addEventListener('click', () => { if (modalCard >= 0) gotoCard(modalCard - 1); });
+document.getElementById('m-next').addEventListener('click', () => { if (modalCard >= 0) gotoCard(modalCard + 1); });
+
+// Bulk dialog
+const bnText = document.getElementById('bn-text');
+const bnGutter = document.getElementById('bn-gutter');
+function parseNames(text) {
+  const n = D.sheets.length;
+  const lines = text.replace(/\r/g, '').split('\n');
+  const filled = lines.filter(l => l.trim());
+  const numRe = /^\s*#?(\d+)\s*[;,\t:.\-\u2013]\s*(.*?)\s*$/;
+  const numbered = filled.length > 0 && filled.every(l => numRe.test(l));
+  let out = names.slice(), skipped = 0;
+  if (numbered) {
+    filled.forEach(l => {
+      const m = numRe.exec(l), c = parseInt(m[1], 10);
+      if (c >= 1 && c <= n) out[c - 1] = m[2].slice(0, NAME_MAX); else skipped++;
+    });
+  } else {
+    out = D.sheets.map((_, i) => (lines[i] || '').trim().slice(0, NAME_MAX));
+    skipped = lines.slice(n).filter(l => l.trim()).length;
+  }
+  return { out, skipped };
+}
+function updateBnCount() {
+  const r = parseNames(bnText.value);
+  document.getElementById('bn-count').textContent = r.out.filter(Boolean).length + ' of ' + D.sheets.length + ' cards named';
+}
+function openNamesDialog() {
+  bnGutter.textContent = D.sheets.map((_, i) => i + 1).join('\n');
+  bnText.value = names.join('\n');
+  updateBnCount();
+  document.getElementById('ov-names').classList.add('open');
+  bnText.scrollTop = 0; bnGutter.scrollTop = 0;
+  bnText.focus(); bnText.setSelectionRange(0, 0);
+}
+function closeNamesDialog() {
+  document.getElementById('ov-names').classList.remove('open');
+}
+bnText.addEventListener('input', updateBnCount);
+bnText.addEventListener('scroll', () => { bnGutter.scrollTop = bnText.scrollTop; });
+document.getElementById('bn-close').addEventListener('click', closeNamesDialog);
+document.getElementById('bn-cancel').addEventListener('click', closeNamesDialog);
+document.getElementById('ov-names').addEventListener('click', e => {
+  if (e.target === document.getElementById('ov-names')) closeNamesDialog();
+});
+document.getElementById('bn-clear').addEventListener('click', () => {
+  if (!bnText.value.trim() || confirm('Clear every name in this list? (Nothing changes until you press Apply.)')) {
+    bnText.value = ''; updateBnCount(); bnText.focus();
+  }
+});
+document.getElementById('bn-copy').addEventListener('click', function () {
+  const btn = this;
+  const done = () => { btn.textContent = 'Copied \u2713'; setTimeout(() => { btn.textContent = 'Copy list'; }, 1500); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(bnText.value).then(done, () => {});
+  else { bnText.select(); try { document.execCommand('copy'); done(); } catch (e) {} }
+});
+document.getElementById('bn-apply').addEventListener('click', () => {
+  const r = parseNames(bnText.value);
+  r.out.forEach((v, i) => { names[i] = v; });
+  dirty = true;
+  persistLocal();
+  updateSaveState();
+  buildCardGrid();
+  if (modalCard >= 0) document.getElementById('m-name').value = names[modalCard];
+  closeNamesDialog();
+  showToast('Names updated &mdash; ' + names.filter(Boolean).length + ' of ' + D.sheets.length + ' cards named' +
+    (r.skipped ? ' (' + r.skipped + ' line' + (r.skipped > 1 ? 's' : '') + ' skipped)' : ''), 'info', 4500);
+});
+
+// ══ Save names into the HTML file ══════════════════════
+function buildFileHtml() {
+  const START = '/*NAMES_' + 'START*/', END = '/*NAMES_' + 'END*/';
+  const a = PRISTINE.indexOf(START);
+  const b = PRISTINE.indexOf(END, a);
+  if (a < 0 || b < 0) throw new Error('names block not found');
+  const payload = JSON.stringify({ ts: Date.now(), names: names, deck: deckToJson(deck), pdf: pdfOpts }).replace(/</g, '\\u003c');
+  return PRISTINE.slice(0, a) + START + 'const SAVED = ' + payload + ';' + PRISTINE.slice(b);
+}
+
+async function saveFile() {
+  let html;
+  try { html = buildFileHtml(); }
+  catch (err) { showToast('Could not build the file: ' + esc(err.message), 'info', 6000); return; }
+
+  if (window.showSaveFilePicker) {
+    try {
+      if (!fileHandle) {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: 'sommerbingo.html',
+          types: [{ description: 'HTML file', accept: { 'text/html': ['.html', '.htm'] } }]
+        });
+      }
+      const w = await fileHandle.createWritable();
+      await w.write(html);
+      await w.close();
+      dirty = false;
+      updateSaveState('Saved to ' + fileHandle.name + ' at ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;   // user cancelled the picker
+      fileHandle = null;                              // fall through to a normal download
+    }
+  }
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'sommerbingo.html';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  dirty = false;
+  updateSaveState('Downloaded \u2014 replace your old file with it');
+}
+
+// ══ Playlist import ════════════════════════════════════
+function normStr(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function parseCsv(text) {
+  text = text.replace(/^\uFEFF/, '');
+  const first = text.split(/\r?\n/, 1)[0];
+  const delim = [',', ';', '\t'].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === delim) { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ''));
+}
+
+const COMMA_ARTISTS = ['Earth, Wind & Fire', 'Earth, Wind and Fire', 'Tyler, The Creator', 'Crosby, Stills, Nash & Young',
+  'Crosby, Stills & Nash', 'Emerson, Lake & Palmer', 'Peter, Paul & Mary'];
+function firstArtist(s) {
+  s = String(s || '').trim();
+  const low = s.toLowerCase();
+  for (const a of COMMA_ARTISTS) if (low.startsWith(a.toLowerCase())) return a;
+  return s.split(/\s*[,;]\s*/)[0].trim();
+}
+
+const JUNK_ANY = /\b(remaster|remastered|re-?master|radio|edit|version|mix|remix|mono|stereo|single|original|bonus|deluxe|explicit|album)\b/i;
+const JUNK_START = /^(feat|ft|featuring|with|live|from)\b/i;
+function isJunk(inner) {
+  inner = inner.trim();
+  return JUNK_ANY.test(inner) || JUNK_START.test(inner) || /(\.\.\.|\u2026)$/.test(inner);
+}
+function stripTrailingGroup(s) {
+  const last = s.slice(-1);
+  if (last !== ')' && last !== ']') return s;
+  let depth = 0;
+  for (let i = s.length - 1; i >= 0; i--) {
+    const c = s[i];
+    if (c === ')' || c === ']') depth++;
+    else if (c === '(' || c === '[') {
+      depth--;
+      if (depth === 0) return (last === ']' || isJunk(s.slice(i + 1, -1))) ? s.slice(0, i).trimEnd() : s;
+    }
+  }
+  return s;
+}
+function cleanTitle(t) {
+  let s = String(t || '').replace(/\s+/g, ' ').trim();
+  s = s.replace(/\s*[(\[][^()\[\]]*[)\]]/g, m => /[A-Za-z0-9]/.test(m) ? m : '');   // groups with no latin text, e.g. a Korean subtitle
+  for (let guard = 0; guard < 6; guard++) {
+    const before = s;
+    s = stripTrailingGroup(s);
+    s = s.replace(/\s+[-\u2013\u2014]\s+([^-\u2013\u2014]*)$/, (m, inner) => isJunk(inner) ? '' : m);
+    if (s === before) break;
+  }
+  return s.trim();
+}
+
+// Songs whose year we already know: current playlist, years typed in earlier, and the built-in deck
+function knownSongs() {
+  const list = [], seen = new Set();
+  const add = (artist, title, year) => {
+    if (!(year > 0)) return;
+    const na = normStr(artist), nt = normStr(title), k = na + '|' + nt;
+    if (seen.has(k)) return;
+    seen.add(k);
+    list.push({ na, nt, tok: new Set(nt.split(' ')), artist, title, year });
+  };
+  if (deck) deck.playlist.forEach(s => add(s.artist, s.title, s.year));
+  try { JSON.parse(localStorage.getItem(YEARS_KEY) || '[]').forEach(r => add(r[0], r[1], r[2])); } catch (e) {}
+  BUILTIN_SHEETS.forEach(sh => sh.forEach(s => add(s.artist, s.title, s.year)));
+  return list;
+}
+function artistsMatch(a, b) { return !!a && !!b && (a === b || a.startsWith(b + ' ') || b.startsWith(a + ' ')); }
+function findKnown(list, artist, title) {
+  const na = normStr(artist), nt = normStr(title);
+  if (!nt) return null;
+  const tok = new Set(nt.split(' '));
+  let best = null, bestScore = 0;
+  for (const k of list) {
+    if (!artistsMatch(na, k.na)) continue;
+    let score = 0;
+    if (k.nt === nt) score = 1;
+    else {
+      let inter = 0;
+      k.tok.forEach(x => { if (tok.has(x)) inter++; });
+      const subset = (inter === k.tok.size && k.tok.size >= 2) || (inter === tok.size && tok.size >= 2);
+      const jac = inter / (k.tok.size + tok.size - inter);
+      score = subset ? 0.9 : (jac >= 0.6 ? jac : 0);
+    }
+    if (score > bestScore) { bestScore = score; best = k; }
+  }
+  return best;
+}
+function rememberYears(pl) {
+  try {
+    const map = new Map(JSON.parse(localStorage.getItem(YEARS_KEY) || '[]').map(r => [normStr(r[0]) + '|' + normStr(r[1]), r]));
+    pl.forEach(s => { if (s.year > 0) map.set(normStr(s.artist) + '|' + normStr(s.title), [s.artist, s.title, s.year]); });
+    localStorage.setItem(YEARS_KEY, JSON.stringify([...map.values()]));
+  } catch (e) {}
+}
+
+function importPlaylist(text, fileName) {
+  const rows = parseCsv(text);
+  if (rows.length < 2) throw new Error('The file has no song rows.');
+  const head = rows[0].map(h => h.trim().toLowerCase());
+  const find = (...res) => head.findIndex(h => res.some(r => r.test(h)));
+  const ti = find(/^(track |song )?(name|title)$/, /^track$/, /^song$/);
+  const ai = find(/artist/), yi = find(/year/, /release/), pi = find(/^playlist/);
+  if (ti < 0) throw new Error('Could not find a title column (expected "title" or "track name").');
+  const known = knownSongs();
+  const out = [], seen = new Set();
+  let dupes = 0, filled = 0;
+  rows.slice(1).forEach(r => {
+    let title = cleanTitle(r[ti]);
+    const artist = ai >= 0 ? firstArtist(r[ai]) : '';
+    if (!title) return;
+    let year = yi >= 0 ? (parseInt(String(r[yi] || '').slice(0, 4), 10) || 0) : 0;
+    if (year < 1000 || year > 2100) year = 0;
+    const m = findKnown(known, artist, title);
+    if (m) { title = m.title; if (!year) { year = m.year; filled++; } }
+    const key = normStr(artist) + '|' + normStr(title);
+    if (seen.has(key)) { dupes++; return; }
+    seen.add(key);
+    out.push({ artist, title, year });
+  });
+  const name = (pi >= 0 && rows[1][pi] && rows[1][pi].trim()) || String(fileName || 'Playlist').replace(/\.[^.]+$/, '');
+  return { name, songs: out, dupes, filled, missing: out.filter(s => !s.year).length };
+}
+
+// ══ Card generator ═════════════════════════════════════
+function decadeBin(y) { return !(y > 0) ? 9 : y < 1950 ? 0 : Math.min(8, Math.floor(y / 10) - 194); }
+const BIN_LABELS = ['pre-1950', '1950s', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s', 'unknown'];
+
+function generateCards(playlist, nCards, rng) {
+  rng = rng || Math.random;
+  const M = playlist.length, K = 15, N = nCards, NB = 10;
+  const sq = x => x * x;
+  const bins = playlist.map(s => decadeBin(s.year));
+  const tot = new Array(NB).fill(0);
+  bins.forEach(b => tot[b]++);
+  const exp = tot.map(c => K * c / M);
+
+  // 1. every card takes the 15 least-used songs, so each song ends up on the same number of cards (+/- 1)
+  const use = new Array(M).fill(0), cards = [];
+  for (let c = 0; c < N; c++) {
+    const order = Array.from({ length: M }, (_, i) => ({ i, u: use[i], r: rng() })).sort((a, b) => a.u - b.u || a.r - b.r);
+    const card = order.slice(0, K).map(o => o.i);
+    card.forEach(i => use[i]++);
+    cards.push(card);
+  }
+
+  // 2. swap songs between cards: fewer shared songs between any two cards, and a decade mix close to the playlist's
+  const has = cards.map(c => { const a = new Uint8Array(M); c.forEach(i => { a[i] = 1; }); return a; });
+  const ov = Array.from({ length: N }, () => new Int16Array(N));
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+    let o = 0; for (const s of cards[i]) o += has[j][s];
+    ov[i][j] = ov[j][i] = o;
+  }
+  const cnt = cards.map(c => { const a = new Int16Array(NB); c.forEach(s => { a[bins[s]]++; }); return a; });
+  const iters = N > 1 ? Math.min(250000, 2000 * N) : 0;
+  for (let it = 0; it < iters; it++) {
+    const i = Math.floor(rng() * N);
+    let j = Math.floor(rng() * (N - 1)); if (j >= i) j++;
+    const pi = Math.floor(rng() * K), pj = Math.floor(rng() * K);
+    const a = cards[i][pi], b = cards[j][pj];
+    if (a === b || has[j][a] || has[i][b]) continue;
+    let d = 0;
+    for (let k = 0; k < N; k++) {
+      if (k === i || k === j) continue;
+      const dd = has[k][b] - has[k][a];
+      if (dd !== 0) { const oi = ov[i][k], oj = ov[j][k]; d += sq(oi + dd) - sq(oi) + sq(oj - dd) - sq(oj); }
+    }
+    const ba = bins[a], bb = bins[b];
+    if (ba !== bb) {
+      const ci = cnt[i], cj = cnt[j];
+      d += sq(ci[ba] - 1 - exp[ba]) - sq(ci[ba] - exp[ba]) + sq(ci[bb] + 1 - exp[bb]) - sq(ci[bb] - exp[bb]);
+      d += sq(cj[bb] - 1 - exp[bb]) - sq(cj[bb] - exp[bb]) + sq(cj[ba] + 1 - exp[ba]) - sq(cj[ba] - exp[ba]);
+    }
+    if (d < -1e-9) {
+      for (let k = 0; k < N; k++) {
+        if (k === i || k === j) continue;
+        const dd = has[k][b] - has[k][a];
+        if (dd !== 0) { ov[i][k] += dd; ov[k][i] += dd; ov[j][k] -= dd; ov[k][j] -= dd; }
+      }
+      cards[i][pi] = b; cards[j][pj] = a;
+      has[i][a] = 0; has[i][b] = 1; has[j][b] = 0; has[j][a] = 1;
+      if (ba !== bb) { cnt[i][ba]--; cnt[i][bb]++; cnt[j][bb]--; cnt[j][ba]++; }
+    }
+  }
+
+  let maxOverlap = 0, sumOv = 0, pairs = 0;
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) { maxOverlap = Math.max(maxOverlap, ov[i][j]); sumOv += ov[i][j]; pairs++; }
+  const uses = new Array(M).fill(0);
+  cards.forEach(c => c.forEach(s => uses[s]++));
+  return {
+    cards: cards.map(c => c.slice().sort((x, y) => x - y)),
+    stats: { minUse: Math.min(...uses), maxUse: Math.max(...uses), maxOverlap, avgOverlap: pairs ? sumOv / pairs : 0 }
+  };
+}
+
+// ══ PDF writer (A4, standard Helvetica, no external libraries) ═══
+const PDF_W = 595.2756, PDF_H = 841.8898;
+const WIN_SPECIAL = { '\u20AC': 0x80, '\u201A': 0x82, '\u0192': 0x83, '\u201E': 0x84, '\u2026': 0x85, '\u2020': 0x86, '\u2021': 0x87, '\u02C6': 0x88,
+  '\u2030': 0x89, '\u0160': 0x8A, '\u2039': 0x8B, '\u0152': 0x8C, '\u017D': 0x8E, '\u2018': 0x91, '\u2019': 0x92, '\u201C': 0x93, '\u201D': 0x94,
+  '\u2022': 0x95, '\u2013': 0x96, '\u2014': 0x97, '\u02DC': 0x98, '\u2122': 0x99, '\u0161': 0x9A, '\u203A': 0x9B, '\u0153': 0x9C, '\u017E': 0x9E, '\u0178': 0x9F };
+const WIN_REV = {};
+Object.keys(WIN_SPECIAL).forEach(k => { WIN_REV[WIN_SPECIAL[k]] = k; });
+const EXTRA_BASE = { '\u0142': 'l', '\u0141': 'L', '\u0111': 'd', '\u0110': 'D', '\u0131': 'i', '\u02BC': "'", '\u2212': '-', '\u00AD': '-' };
+
+function toWin(str) {            // JS string -> string of WinAnsi byte values (characters the font cannot show are dropped)
+  let out = '';
+  for (const ch of String(str == null ? '' : str).normalize('NFC')) {
+    const c = ch.codePointAt(0);
+    if ((c >= 32 && c < 127) || (c >= 160 && c <= 255)) out += ch;
+    else if (WIN_SPECIAL[ch] !== undefined) out += String.fromCharCode(WIN_SPECIAL[ch]);
+    else if (c === 9 || c === 10 || c === 13) out += ' ';
+    else {
+      const base = EXTRA_BASE[ch] || ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (base && base !== ch && base.charCodeAt(0) < 127) out += base[0];
+    }
+  }
+  return out.replace(/\(\s*\)|\[\s*\]/g, '').replace(/ {2,}/g, ' ').trim();
+}
+
+const HW = {}, BW = {}, XH = {}, XB = {};
+(function () {
+  const up = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', lo = 'abcdefghijklmnopqrstuvwxyz';
+  const hu = [667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611];
+  const hl = [556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500];
+  const bu = [722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611];
+  const bl = [556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500];
+  for (let i = 0; i < 26; i++) {
+    HW[up.charCodeAt(i)] = hu[i]; HW[lo.charCodeAt(i)] = hl[i];
+    BW[up.charCodeAt(i)] = bu[i]; BW[lo.charCodeAt(i)] = bl[i];
+  }
+  for (let c = 48; c <= 57; c++) { HW[c] = 556; BW[c] = 556; }
+  const pc = ' !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
+  const hp = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,278,278,584,584,584,556,1015,278,278,278,469,556,333,334,260,334,584];
+  const bp = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,333,333,584,584,584,611,975,333,278,333,584,556,333,389,280,389,584];
+  for (let i = 0; i < pc.length; i++) { HW[pc.charCodeAt(i)] = hp[i]; BW[pc.charCodeAt(i)] = bp[i]; }
+  // [code, regular, bold]
+  [[0x80,556,556],[0x85,1000,1000],[0x91,222,278],[0x92,222,278],[0x93,333,500],[0x94,333,500],[0x95,350,350],[0x96,556,556],[0x97,1000,1000],
+   [0x99,1000,1000],[0x8C,1000,1000],[0x9C,944,944],[0xA0,278,278],[0xA1,333,333],[0xA3,556,556],[0xA9,737,737],[0xAE,737,737],[0xB0,400,400],
+   [0xB7,278,278],[0xBD,834,834],[0xBF,611,611],[0xD7,584,584],[0xDF,611,611],[0xE6,889,889],[0xC6,1000,1000],[0xF8,611,611],[0xD8,778,778]
+  ].forEach(r => { XH[r[0]] = r[1]; XB[r[0]] = r[2]; });
+})();
+function charW(code, bold) {
+  const T = bold ? BW : HW, X = bold ? XB : XH;
+  if (T[code] !== undefined) return T[code];
+  if (X[code] !== undefined) return X[code];
+  const ch = WIN_REV[code] || String.fromCharCode(code);
+  const base = ch.normalize('NFD').charAt(0).charCodeAt(0);
+  return T[base] !== undefined ? T[base] : 556;
+}
+function textWidth(s, bold, size) {      // s must already be WinAnsi-coded
+  let w = 0;
+  for (let i = 0; i < s.length; i++) w += charW(s.charCodeAt(i), bold);
+  return w * size / 1000;
+}
+function pdfFmt(n) { return String(Math.round(n * 100) / 100); }
+function pdfEsc(s) { return s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)'); }
+
+const C_SLATE = [19, 28, 39], C_STEEL = [143, 168, 178], C_BLUE = [53, 43, 165], C_INDIGO = [83, 72, 206],
+      C_CLOUD = [206, 218, 224], C_GRID = [68, 68, 68], C_WHITE = [255, 255, 255];
+const colr = c => c.map(v => pdfFmt(v / 255)).join(' ');
+
+function pdfPage() {
+  const ops = [];
+  return {
+    ops,
+    rect(x, top, w, h, mode) { ops.push([x, PDF_H - top - h, w, h].map(pdfFmt).join(' ') + ' re ' + mode); },
+    fill(c) { ops.push(colr(c) + ' rg'); },
+    stroke(c, w) { ops.push(colr(c) + ' RG ' + pdfFmt(w) + ' w'); },
+    line(x1, y1, x2, y2) { ops.push(pdfFmt(x1) + ' ' + pdfFmt(PDF_H - y1) + ' m ' + pdfFmt(x2) + ' ' + pdfFmt(PDF_H - y2) + ' l S'); },
+    text(s, x, base, font, size, color, align) {      // s: WinAnsi-coded; base: baseline measured from the top of the page
+      const w = textWidth(s, font === 'F2', size);
+      if (align === 'center') x -= w / 2; else if (align === 'right') x -= w;
+      ops.push('BT ' + colr(color) + ' rg /' + font + ' ' + pdfFmt(size) + ' Tf ' + pdfFmt(x) + ' ' + pdfFmt(PDF_H - base) + ' Td (' + pdfEsc(s) + ') Tj ET');
+      return w;
+    }
+  };
+}
+
+function pdfEllipsize(s, maxW, bold, size) {
+  if (textWidth(s, bold, size) <= maxW) return s;
+  while (s.length > 1 && textWidth(s + '\x85', bold, size) > maxW) s = s.slice(0, -1);
+  return s.trimEnd() + '\x85';
+}
+function pdfWrap(s, maxW, bold, size) {
+  const lines = []; let cur = '';
+  s.split(' ').filter(Boolean).forEach(w => {
+    const t = cur ? cur + ' ' + w : w;
+    if (!cur || textWidth(t, bold, size) <= maxW) cur = t; else { lines.push(cur); cur = w; }
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+function pdfFitTitle(s, maxW) {            // up to 3 lines of bold text; shrink the font before clipping anything
+  for (const [size, maxLines] of [[10.5, 2], [9.5, 2], [10.5, 3], [9.5, 3], [8.5, 3], [7.5, 3]]) {
+    const lines = pdfWrap(s, maxW, true, size);
+    if (lines.length <= maxLines && lines.every(l => textWidth(l, true, size) <= maxW)) return { lines, size };
+  }
+  const all = pdfWrap(s, maxW, true, 7.5);
+  const lines = all.slice(0, 3).map(l => pdfEllipsize(l, maxW, true, 7.5));
+  if (all.length > 3) lines[2] = pdfEllipsize(lines[2] + ' \x85', maxW, true, 7.5);
+  return { lines, size: 7.5 };
+}
+
+function drawChecklistPage(pg, chunk, o) {
+  const MARGIN = 28.3465, RIGHT = PDF_W - MARGIN;
+  pg.text(toWin(o.title), PDF_W / 2, 37.8, 'F2', 14, C_SLATE, 'center');
+  if (o.brand) {
+    const b = toWin(o.brand), w = pg.text(b, RIGHT, 34.9, 'F2', 9, C_BLUE, 'right');
+    pg.stroke(C_BLUE, 0.8); pg.line(RIGHT - w, 37.4, RIGHT, 37.4);
+  }
+  if (o.subtitle) pg.text(toWin(o.subtitle), PDF_W / 2, 48.0, 'F1', 7, C_STEEL, 'center');
+
+  const perCol = Math.ceil(chunk.length / 2);
+  const colX = [32.3, 309.0], colRight = [290.3, RIGHT];
+  const dash = '\x97';
+  chunk.forEach((it, idx) => {
+    const c = idx < perCol ? 0 : 1, r = c ? idx - perCol : idx;
+    const top = 50.8 + r * 15, x = colX[c];
+    pg.stroke(C_CLOUD, 0.6); pg.rect(x, top, 8, 8, 'S');
+    const count = toWin('\u00D7' + it.count);
+    const cw = textWidth(count, false, 7.8);
+    pg.text(count, colRight[c], top + 7.2, 'F3', 7.8, C_STEEL, 'right');
+    const maxW = colRight[c] - 5 - cw - (x + 11);
+    const A = toWin(it.artist), Y = it.year > 0 ? ' ' + dash + ' ' + it.year : '';
+    const full = toWin(it.title);
+    const build = tt => (A ? A + ' ' + dash + ' ' : '') + tt + Y;
+    let T = full;
+    if (textWidth(build(T), false, 9.5) > maxW) {      // shorten the title, never the artist or the year
+      while (T.length > 1 && textWidth(build(T.trimEnd() + '\x85'), false, 9.5) > maxW) T = T.slice(0, -1);
+      T = T.trimEnd() + '\x85';
+    }
+    pg.text(build(T), x + 11, top + 7.1, 'F1', 9.5, C_SLATE, 'left');
+  });
+
+  pg.stroke(C_CLOUD, 0.5);
+  pg.line(297.64, 50.8, 297.64, 787.5);
+  pg.line(MARGIN, 790.5, RIGHT, 790.5);
+
+  // songs per decade
+  const dec = new Array(10).fill(0);
+  o.items.forEach(it => dec[decadeBin(it.year)]++);
+  let x = 32.3;
+  x += pg.text('Songs per decade:', x, 804.3, 'F2', 6.5, C_STEEL, 'left') + 22;
+  dec.forEach((n, b) => {
+    if (!n) return;
+    x += pg.text(BIN_LABELS[b] + ':', x, 804.2, 'F2', 7.5, C_BLUE, 'left') + 2.2;
+    x += pg.text(String(n), x, 804.2, 'F2', 7.5, C_BLUE, 'left') + 14;
+  });
+}
+
+function drawCardBlock(pg, slot, num, cells) {
+  const X = 28.3465, WD = PDF_W - 2 * X, HB = 254.17, PITCH = HB + 11.34;
+  const top = 28.3465 + slot * PITCH, HDR = 14.17;
+  pg.fill(C_BLUE); pg.rect(X, top, WD, HDR, 'f');
+  pg.stroke(C_BLUE, 3); pg.rect(X, top, WD, HB, 'S');
+  pg.stroke(C_INDIGO, 0.8); pg.rect(X + 4, top + 4, WD - 8, HB - 8, 'S');
+  pg.text('Card #' + num, X + WD / 2, top + 9.9, 'F2', 7.5, C_WHITE, 'center');
+
+  const gTop = top + HDR, gBot = top + HB - 4, rowH = (gBot - gTop) / 3, colW = WD / 5;
+  pg.stroke(C_GRID, 0.4);
+  for (let k = 1; k < 5; k++) pg.line(X + k * colW, gTop, X + k * colW, gBot);
+  for (let r = 1; r < 3; r++) pg.line(X + 4, gTop + r * rowH, X + WD - 4, gTop + r * rowH);
+
+  const maxW = colW - 16;
+  cells.forEach((s, idx) => {
+    const col = Math.floor(idx / 3), row = idx % 3;       // columns run top-to-bottom, oldest song first
+    const x = X + col * colW + 8, centre = gTop + row * rowH + rowH / 2;
+    let aSize = 8.5;                                   // shrink a long artist name a little before clipping it
+    const artistFull = toWin(s.artist);
+    while (aSize > 7 && textWidth(artistFull, false, aSize) > maxW) aSize -= 0.5;
+    const artist = pdfEllipsize(artistFull, maxW, false, aSize);
+    const fit = pdfFitTitle(toWin(s.title) || '?', maxW);
+    const hasYear = s.year > 0;
+    const total = 1 + fit.lines.length + (hasYear ? 1 : 0);
+    const pitch = fit.size === 10.5 ? 13.5 : fit.size * 1.29;
+    let y = centre - 5.75 - (total - 1) * pitch / 2;
+    pg.text(artist, x, y, 'F1', aSize, C_STEEL, 'left');
+    fit.lines.forEach(l => { y += pitch; pg.text(l, x, y, 'F2', fit.size, C_SLATE, 'left'); });
+    if (hasYear) { y += pitch; pg.text(String(s.year), x, y, 'F3', 9, C_BLUE, 'left'); }
+  });
+}
+
+function buildBingoPdf(o) {      // o: { title, brand, subtitle, items:[{artist,title,year,count}], cards:[[song x 15]] }
+  const pages = [];
+  const PER_PAGE = 98;
+  for (let start = 0; start === 0 || start < o.items.length; start += PER_PAGE) {
+    const pg = pdfPage(); pages.push(pg);
+    drawChecklistPage(pg, o.items.slice(start, start + PER_PAGE), o);
+  }
+  let pg = null;
+  o.cards.forEach((cells, c) => {
+    if (c % 3 === 0) { pg = pdfPage(); pages.push(pg); }
+    drawCardBlock(pg, c % 3, c + 1, cells);
+  });
+
+  const n = pages.length, total = 7 + 2 * n, offs = [];
+  let out = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+  const obj = (num, body) => { offs[num] = out.length; out += num + ' 0 obj\n' + body + '\nendobj\n'; };
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2, '<< /Type /Pages /Kids [' + pages.map((_, i) => (7 + 2 * i) + ' 0 R').join(' ') + '] /Count ' + n + ' >>');
+  ['Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique'].forEach((f, i) =>
+    obj(3 + i, '<< /Type /Font /Subtype /Type1 /BaseFont /' + f + ' /Encoding /WinAnsiEncoding >>'));
+  obj(6, '<< /Title (' + pdfEsc(toWin(o.title) || 'Bingo') + ') /Producer (Sommerbingo caller) >>');
+  pages.forEach((p, i) => {
+    const content = p.ops.join('\n');
+    obj(7 + 2 * i, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PDF_W + ' ' + PDF_H + '] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents ' + (8 + 2 * i) + ' 0 R >>');
+    obj(8 + 2 * i, '<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream');
+  });
+  const xref = out.length;
+  out += 'xref\n0 ' + total + '\n0000000000 65535 f \n';
+  for (let i = 1; i < total; i++) out += String(offs[i]).padStart(10, '0') + ' 00000 n \n';
+  out += 'trailer\n<< /Size ' + total + ' /Root 1 0 R /Info 6 0 R >>\nstartxref\n' + xref + '\n%%EOF\n';
+  const bytes = new Uint8Array(out.length);
+  for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 255;
+  return bytes;
+}
+
+function artistSortKey(s) { return String(s.artist || '').replace(/^the\s+/i, ''); }
+function artistSort(a, b) {
+  return artistSortKey(a).localeCompare(artistSortKey(b), 'en', { sensitivity: 'base', numeric: true }) ||
+         String(a.title).localeCompare(String(b.title), 'en', { sensitivity: 'base', numeric: true });
+}
+function pdfItems() {
+  return songs.slice().sort(artistSort).map(s => ({ artist: s.artist, title: s.title, year: s.year || 0, count: (s2c.get(KEY(s)) || []).length }));
+}
+function makePdfBytes() {
+  return buildBingoPdf({ title: pdfOpts.title, brand: pdfOpts.brand, subtitle: pdfOpts.subtitle, items: pdfItems(), cards: D.sheets });
+}
+function downloadPdf() {
+  if (!D.sheets.length) return;
+  const blob = new Blob([makePdfBytes()], { type: 'application/pdf' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (pdfOpts.title.replace(/[^\w\-]+/g, '_').replace(/^_+|_+$/g, '') || 'bingo') + '_cards.pdf';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+// ══ Playlist & cards dialog ════════════════════════════
+const dkEl = id => document.getElementById(id);
+function setDkMsg(text, kind) { const m = dkEl('dk-msg'); m.textContent = text || ''; m.className = 'dk-msg' + (kind ? ' ' + kind : ''); }
+
+function playlistForGeneration() {
+  if (deck) return deck.playlist;
+  const seen = new Map();
+  BUILTIN_SHEETS.forEach(sh => sh.forEach(s => { const k = KEY(s); if (!seen.has(k)) seen.set(k, s); }));
+  return [...seen.values()].sort(artistSort).map((s, i) => ({ id: i, artist: s.artist, title: s.title, year: s.year }));
+}
+
+function installDeck(dk) {       // replace playlist + cards; clears names and called songs
+  useDeck(dk);
+  resetNames();
+  called.clear();
+  refreshAll();
+  dirty = true; persistLocal(); updateSaveState();
+}
+
+function renderDeckDialog() {
+  const nSongs = deck ? deck.playlist.length : songs.length;
+  dkEl('dk-status').textContent = deck
+    ? (nSongs || D.sheets.length ? (deck.name || 'Playlist') + ' \u00B7 ' + nSongs + ' songs \u00B7 ' + D.sheets.length + ' cards' : 'No playlist loaded')
+    : 'Built-in deck \u00B7 ' + nSongs + ' songs \u00B7 ' + D.sheets.length + ' cards';
+  dkEl('dk-builtin').disabled = !deck;
+  dkEl('dk-clear').disabled = !!deck && !deck.playlist.length && !deck.cards.length;
+  dkEl('dk-pdf').disabled = !D.sheets.length;
+  dkEl('dk-pdfinfo').textContent = D.sheets.length
+    ? '1 checklist page + ' + Math.ceil(D.sheets.length / 3) + ' card pages (3 cards per A4 page)'
+    : 'Generate cards first.';
+  dkEl('dk-gen').disabled = playlistForGeneration().length < 16;
+  setLookupButton();
+  dkEl('dk-pdf-title').value = pdfOpts.title;
+  dkEl('dk-pdf-brand').value = pdfOpts.brand;
+  dkEl('dk-pdf-sub').value = pdfOpts.subtitle;
+
+  const wrap = dkEl('dk-table-wrap'), tb = dkEl('dk-tbody');
+  if (deck && deck.playlist.length) {
+    wrap.style.display = '';
+    tb.innerHTML = deck.playlist.map((s, i) =>
+      '<tr class="' + (s.year ? '' : 'nodate') + '"><td class="n">' + (i + 1) + '</td>' +
+      '<td><input data-i="' + i + '" data-f="artist" value="' + esc(s.artist) + '" spellcheck="false"></td>' +
+      '<td><input data-i="' + i + '" data-f="title" value="' + esc(s.title) + '" spellcheck="false"></td>' +
+      '<td class="yr"><input class="y" data-i="' + i + '" data-f="year" value="' + (s.year || '') + '" maxlength="4" inputmode="numeric" placeholder="year"></td></tr>').join('');
+  } else {
+    wrap.style.display = 'none';
+    tb.innerHTML = '';
+  }
+}
+function missingYearsText() {
+  const miss = deck ? deck.playlist.filter(x => !x.year).length : 0;
+  return miss ? miss + ' song' + (miss > 1 ? 's are' : ' is') + ' without a year \u2014 fill in the highlighted rows (optional, but years order the songs on each card).' : '';
+}
+
+function openDeckDialog() { renderDeckDialog(); dkEl('ov-deck').classList.add('open'); }
+function closeDeckDialog() { dkEl('ov-deck').classList.remove('open'); }
+
+function handlePlaylistFile(file) {
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => loadPlaylistText(String(rd.result), file.name);
+  rd.onerror = () => setDkMsg('Could not read that file.', 'err');
+  rd.readAsText(file, 'utf-8');
+}
+function loadPlaylistText(text, fileName) {
+  let res;
+  try { res = importPlaylist(text, fileName); } catch (e) { setDkMsg(e.message, 'err'); return false; }
+  if (!res.songs.length) { setDkMsg('No songs found in that file.', 'err'); return false; }
+  if ((D.sheets.length || names.some(Boolean) || called.size) &&
+      !confirm('Loading a playlist replaces the current songs and cards (' + D.sheets.length + ' cards) and clears player names and called songs.\n\nThe built-in deck can be restored later. Continue?')) return false;
+  const playlist = res.songs.map((s, i) => ({ id: i, artist: s.artist, title: s.title, year: s.year }));
+  installDeck({ name: res.name, playlist, cards: [] });
+  rememberYears(playlist);
+  renderDeckDialog();
+  const miss = missingYearsText();
+  setDkMsg('Loaded ' + playlist.length + ' songs from \u201C' + res.name + '\u201D' +
+    (res.filled ? ' \u2014 ' + res.filled + ' years filled in automatically' : '') +
+    (res.dupes ? ', ' + res.dupes + ' duplicate' + (res.dupes > 1 ? 's' : '') + ' skipped' : '') + '.' +
+    (miss ? ' ' + miss : ''), miss ? 'warn' : '');
+  if (miss) lookupMissingYears();       // try to find the rest automatically
+  return true;
+}
+
+let editTimer = null;
+function commitPlaylistEdit() {        // re-sort the card cells and refresh the screen after playlist edits
+  D.sheets = sheetsFromDeck(deck);
+  rebuildData();
+  buildSongList(); buildCardGrid();
+  if (modalCard >= 0 && modalCard < D.sheets.length) refreshModal(modalCard);
+  document.getElementById('n-total').textContent = songs.length;
+  dirty = true; persistLocal(); updateSaveState();
+  rememberYears(deck.playlist);
+}
+function scheduleCommit() {
+  clearTimeout(editTimer);
+  editTimer = setTimeout(() => {
+    commitPlaylistEdit();
+    setLookupButton();
+    if (!lookupRunning) { const m = missingYearsText(); setDkMsg(m || 'All songs have a year.', m ? 'warn' : ''); }
+  }, 350);
+}
+dkEl('dk-tbody').addEventListener('input', e => {
+  const inp = e.target, i = parseInt(inp.dataset.i, 10), f = inp.dataset.f;
+  if (!deck || !(i >= 0) || !f) return;
+  const s = deck.playlist[i];
+  if (f === 'year') {
+    const y = parseInt(inp.value, 10);
+    s.year = (y >= 1000 && y <= 2100) ? y : 0;
+    s.auto = false;
+    const tr = inp.closest('tr');
+    tr.classList.toggle('nodate', !s.year); tr.classList.remove('auto');
+  } else s[f] = inp.value;
+  scheduleCommit();
+});
+
+// ══ Year lookup (MusicBrainz) ══════════════════════════
+let lookupRunning = false, lookupAbort = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const VARIANT_WORDS = new Set(['live', 'remix', 'mix', 'version', 'edit', 'acoustic', 'instrumental', 'karaoke', 'demo', 'remaster', 'remastered',
+  'radio', 'mono', 'stereo', 'cover', 'session', 'sessions', 'reprise', 'extended', 'dub', 'single', 'unplugged', 'orchestral', 'rework', 'club', 'a', 'cappella']);
+function titleRank(rt, nt) {        // 2 = same title, 1 = same title plus harmless extra words, 0 = not the same song
+  if (!rt || !nt) return 0;
+  if (rt === nt) return 2;
+  const ta = new Set(rt.split(' ')), tb = new Set(nt.split(' '));
+  const small = ta.size <= tb.size ? ta : tb, big = ta.size <= tb.size ? tb : ta;
+  if (small.size < 2) return 0;
+  let extra = [];
+  for (const x of small) if (!big.has(x)) return 0;
+  big.forEach(x => { if (!small.has(x)) extra.push(x); });
+  return extra.some(x => VARIANT_WORDS.has(x)) ? 0 : 1;
+}
+function creditMatches(na, nc) {    // the playlist's artist vs one name in a recording's artist credit; ignores a leading "The"
+  na = na.replace(/^the /, ''); nc = nc.replace(/^the /, '');
+  if (!na || !nc) return false;
+  if (na === nc) return true;
+  const ta = new Set(na.split(' ')), tc = new Set(nc.split(' '));
+  const small = ta.size <= tc.size ? ta : tc, big = ta.size <= tc.size ? tc : ta;
+  return small.size >= 2 && [...small].every(x => big.has(x));
+}
+function pickYearFromRecordings(recs, artist, title) {   // earliest first-release year among confident, matching recordings
+  const na = normStr(artist), nt = normStr(title);
+  const best = { 2: 0, 1: 0 };
+  (recs || []).forEach(rec => {
+    if ((rec.score || 0) < 85) return;
+    const rank = titleRank(normStr(rec.title), nt);
+    if (!rank) return;
+    const credits = (rec['artist-credit'] || []).map(c => normStr(c.name || (c.artist && c.artist.name) || ''));
+    if (na && !credits.some(c => creditMatches(na, c))) return;
+    const y = parseInt(String(rec['first-release-date'] || '').slice(0, 4), 10);
+    if (y >= 1000 && y <= 2100 && (!best[rank] || y < best[rank])) best[rank] = y;
+  });
+  return best[2] || best[1] || 0;      // an exact title beats a looser match
+}
+async function lookupYear(artist, title) {
+  const q = 'recording:"' + title.replace(/["\\]/g, ' ') + '" AND artist:"' + artist.replace(/["\\]/g, ' ') + '"';
+  const res = await fetch('https://musicbrainz.org/ws/2/recording/?fmt=json&limit=15&query=' + encodeURIComponent(q));
+  if (res.status === 503 || res.status === 429) { const e = new Error('rate limited'); e.rate = true; throw e; }
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const j = await res.json();
+  return pickYearFromRecordings(j.recordings, artist, title);
+}
+function reflectYear(i) {      // show a looked-up year in the table
+  const s = deck.playlist[i];
+  const inp = dkEl('dk-tbody').querySelector('input[data-i="' + i + '"][data-f="year"]');
+  if (!inp) return;
+  inp.value = s.year || '';
+  const tr = inp.closest('tr');
+  tr.classList.toggle('nodate', !s.year);
+  tr.classList.toggle('auto', !!s.auto);
+  inp.title = s.auto ? 'Looked up on MusicBrainz (earliest release) \u2014 check it if you like' : '';
+}
+function setLookupButton() {
+  const b = dkEl('dk-lookup');
+  b.textContent = lookupRunning ? 'Stop lookup' : 'Look up missing years';
+  b.disabled = !lookupRunning && !(deck && deck.playlist.some(s => !s.year));
+}
+async function lookupMissingYears(gapMs) {
+  if (lookupRunning || !deck) return;
+  const dk = deck;
+  const todo = dk.playlist.map((s, i) => i).filter(i => !dk.playlist[i].year);
+  if (!todo.length || typeof fetch !== 'function') return;
+  lookupRunning = true; lookupAbort = false; setLookupButton();
+  let done = 0, found = 0, failure = '';
+  for (const i of todo) {
+    if (lookupAbort || deck !== dk) break;
+    setDkMsg('Looking up years on MusicBrainz\u2026 ' + (done + 1) + ' of ' + todo.length + (found ? ' (' + found + ' found)' : ''));
+    try {
+      const y = await lookupYear(dk.playlist[i].artist, dk.playlist[i].title);
+      if (deck !== dk) break;
+      if (y) { dk.playlist[i].year = y; dk.playlist[i].auto = true; found++; reflectYear(i); scheduleCommit(); }
+    } catch (e) {
+      failure = e.rate ? 'MusicBrainz asked us to slow down \u2014 try again in a minute.'
+        : 'Could not reach MusicBrainz (no internet, or the browser blocked the request).';
+      break;
+    }
+    done++;
+    if (done < todo.length) await sleep(gapMs === undefined ? 1100 : gapMs);
+  }
+  lookupRunning = false;
+  if (deck === dk) {
+    commitPlaylistEdit();
+    setLookupButton();
+    const miss = missingYearsText();
+    if (failure) setDkMsg(failure + (found ? ' ' + found + ' years were found before that.' : '') + ' You can type the years in.' + (miss ? '' : ''), 'err');
+    else if (lookupAbort) setDkMsg('Lookup stopped \u2014 ' + found + ' years found.' + (miss ? ' ' + miss : ''), miss ? 'warn' : '');
+    else setDkMsg('Looked up ' + done + ' songs on MusicBrainz: ' + found + ' years found' + (found ? ' (tinted blue \u2014 worth a quick check)' : '') + '.' + (miss ? ' ' + miss : ''), miss ? 'warn' : '');
+  }
+}
+dkEl('dk-lookup').addEventListener('click', () => { if (lookupRunning) lookupAbort = true; else lookupMissingYears(); });
+
+dkEl('dk-load').addEventListener('click', () => dkEl('dk-file').click());
+dkEl('dk-file').addEventListener('change', function () { handlePlaylistFile(this.files[0]); this.value = ''; });
+dkEl('dk-clear').addEventListener('click', () => {
+  if ((D.sheets.length || names.some(Boolean) || called.size || (deck && deck.playlist.length)) &&
+      !confirm('Clear the playlist? This removes all songs and cards and clears player names and called songs.\n\nThe built-in deck can be restored later.')) return;
+  installDeck({ name: '', playlist: [], cards: [] });
+  renderDeckDialog();
+  setDkMsg('Playlist cleared.');
+});
+dkEl('dk-builtin').addEventListener('click', () => {
+  if (!confirm('Restore the deck that came with this file (' + BUILTIN_SHEETS.length + ' cards)? The current playlist and cards are replaced and player names are cleared.')) return;
+  installDeck(null);
+  renderDeckDialog();
+  setDkMsg('Built-in deck restored.');
+});
+dkEl('dk-gen').addEventListener('click', () => {
+  const n = Math.max(1, Math.min(500, parseInt(dkEl('dk-ncards').value, 10) || 70));
+  dkEl('dk-ncards').value = n;
+  const pl = playlistForGeneration();
+  if (pl.length < 16) { setDkMsg('At least 16 songs are needed to make cards of 15 different songs.', 'err'); return; }
+  if ((D.sheets.length || names.some(Boolean) || called.size) &&
+      !confirm('Generate ' + n + ' new cards? This replaces the current cards and clears player names and called songs.')) return;
+  const r = generateCards(pl, n);
+  installDeck({ name: deck ? deck.name : 'Built-in playlist', playlist: pl, cards: r.cards });
+  rememberYears(pl);
+  renderDeckDialog();
+  setDkMsg('Generated ' + n + ' cards. Each song is on ' + (r.stats.minUse === r.stats.maxUse ? r.stats.minUse : r.stats.minUse + '\u2013' + r.stats.maxUse) +
+    ' cards, and no two cards share more than ' + r.stats.maxOverlap + ' songs.');
+});
+dkEl('dk-pdf').addEventListener('click', downloadPdf);
+[['dk-pdf-title', 'title'], ['dk-pdf-brand', 'brand'], ['dk-pdf-sub', 'subtitle']].forEach(p =>
+  dkEl(p[0]).addEventListener('input', function () { pdfOpts[p[1]] = this.value; dirty = true; persistLocal(); updateSaveState(); }));
+dkEl('dk-close').addEventListener('click', closeDeckDialog);
+dkEl('ov-deck').addEventListener('click', e => { if (e.target === dkEl('ov-deck')) closeDeckDialog(); });
+['dragover', 'dragenter'].forEach(ev => dkEl('ov-deck').addEventListener(ev, e => { e.preventDefault(); dkEl('ov-deck').classList.add('dk-drop'); }));
+['dragleave', 'drop'].forEach(ev => dkEl('ov-deck').addEventListener(ev, e => { e.preventDefault(); dkEl('ov-deck').classList.remove('dk-drop'); }));
+dkEl('ov-deck').addEventListener('drop', e => handlePlaylistFile(e.dataTransfer && e.dataTransfer.files[0]));
+
+updateSaveState();
+</script>
+</body></html>
+</body>
+</html>
